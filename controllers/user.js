@@ -1,45 +1,35 @@
-const bcrypt = require('bcrypt');
+const express = require('express');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-const { signUpSchema } = require('../helper/validation');
+const router = express.Router();
 
-const signUp = async (req, res) => {
+// Register
+const signup = async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const user = new User({ username, password });
+    await user.save();
+    res.status(201).json({ message: 'User registered' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Login
+const login = async (req, res) => {
+    const { username, password } = req.body;
     try {
-        const { error } = signUpSchema.validate(req.body);
-        if (error) {
-            return res.status(400).json({
-                msg: error.details[0].message
-            }) 
-        }
-        const { name, email, password } = req.body;
+      const user = await User.findOne({ username });
+      if (!user || !(await user.comparePassword(password))) {
+        return res.status(400).json({ message: 'Invalid credentials' });
+      }
 
-        const userInfo = await User.findOne({ email: email })
-
-        if (userInfo) {
-            return res.status(400).json({
-                msg: "Email already registered."
-            })
-        }
-
-        const hashPassword = await bcrypt.hashSync(password, 10);
-
-        const user = await User.create({
-            name: name,
-            email: email,
-            password: hashPassword
-        })
-
-        return res.status(200).json({
-            msg: "Account created successfully",
-            data: { user }
-        })
-
+      // console.log(user._id,process.env.JWT_SECRET)
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      res.json({ token });
     } catch (error) {
-        return res.status(500).json({
-            msg: "Internal server error, please try again"
-        })
+      res.status(400).json({ error: error.message });
     }
-}
+  };
 
-module.exports = {
-    signUp,
-}
+module.exports={login,signup};

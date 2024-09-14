@@ -19,7 +19,7 @@ mongoose.connect(process.env.DB_URL)
     console.log("DB connected..");
   })
   .catch((error) => {
-    console.log("Error on db connection: ", error)
+    // console.log("Error on db connection: ", error)
   })
 
 app.get('/', function (req, res) {
@@ -34,5 +34,5 @@ app.use('/api', userRoute)
 const PORT = process.env.PORT
 
 app.listen(PORT, () => {
-    console.log(`Server is up and running on port ${PORT}`)
+    // console.log(`Server is up and running on port ${PORT}`)
 })

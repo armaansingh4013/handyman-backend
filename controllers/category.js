@@ -1,6 +1,7 @@
 const Category = require("../models/category");
 const path = require('path');
 const {formatName} = require('../helper/formattingName')
+const deleteImage = require('../helper/deleteImage'); 
 // Create a new category (Create)
 const createaCategory =  async (req, res) => {
   try {
@@ -41,37 +42,75 @@ const getCategoryById = async (req, res) => {
 };
 
 // Update a category by ID (Update)
+
 const updateCategory = async (req, res) => {
   try {
-    const updatedCategoryData = {
-      name: req.body.name,
-    };
-    if (req.file) {
-      updatedCategoryData.image = req.file.path;
+    const categoryId = req.params.id;
+    const { name } = req.body;
+
+    // Find the existing category
+    const existingCategory = await Category.findById(categoryId);
+    if (!existingCategory) {
+      return res.status(404).json({ message: 'Category not found' });
     }
+
+    // Prepare the update data
+    const updatedCategoryData = { name };
+    if (req.file) {
+      // New image file provided
+      updatedCategoryData.image = req.file.path.replace(/\\/g, '/');
+
+      // Delete the old image if it exists
+      if (existingCategory.image) {
+        deleteImage([existingCategory.image]);
+      }
+    }
+
+    // Update the category
     const updatedCategory = await Category.findByIdAndUpdate(
-      req.params.id,
+      categoryId,
       updatedCategoryData,
       { new: true, runValidators: true }
     );
-    if (!updatedCategory) return res.status(404).json({ message: 'Category not found' });
+
+    if (!updatedCategory) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
     res.status(200).json(updatedCategory);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
+
 // Delete a category by ID (Delete)
+
 const deleteCategory = async (req, res) => {
   try {
-    const deletedCategory = await Category.findByIdAndDelete(req.params.id);
-    if (!deletedCategory) return res.status(404).json({ message: 'Category not found' });
-    res.status(200).json({ message: 'Category deleted successfully' });
+    const categoryId = req.params.id;
+
+    // Find the existing category to get the image path
+    const categoryToDelete = await Category.findById(categoryId);
+    if (!categoryToDelete) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Get the image path if it exists
+    if (categoryToDelete.image) {
+      deleteImage([categoryToDelete.image]);
+    }
+
+    // Delete the category from the database
+    await Category.findByIdAndDelete(categoryId);
+
+    res.status(200).json({ message: 'Category and associated image deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
   
 module.exports ={
-    createaCategory,getAllCategories
+    createaCategory,getAllCategories,deleteCategory,updateCategory
 }
